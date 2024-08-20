@@ -129,7 +129,15 @@ func (l *Lexer) PanicForToken(t Token, expected LexKind) {
 }
 
 func (l *Lexer) emitWhitespace() Token {
-	for l.Pos < len(l.Input) && l.Input[l.Pos] == ' ' || l.Input[l.Pos] == '\t' || l.Input[l.Pos] == '\r' || l.Input[l.Pos] == '\n' {
+	for {
+		if l.Pos >= len(l.Input) {
+			break
+		}
+
+		if l.Input[l.Pos] != ' ' && l.Input[l.Pos] != '\t' && l.Input[l.Pos] != '\r' && l.Input[l.Pos] != '\n' {
+			break
+		}
+
 		l.Pos++
 	}
 

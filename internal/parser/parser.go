@@ -47,7 +47,20 @@ type (
 	}
 )
 
-func Parse(input string) (*Graph, error) {
+func Parse(input string) (g *Graph, err error) {
+	// The parser and lexer use panic to handle errors since maintaining errors
+	// up the stack is extremely verbose and error prone. This ensures
+	// that we handle errors gracefully upstream
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				err = e
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
 	l := lexer.NewLexer(input)
 	p := &parser{
 		graph: &Graph{
@@ -56,7 +69,7 @@ func Parse(input string) (*Graph, error) {
 		},
 	}
 
-	err := p.parse(l)
+	err = p.parse(l)
 
 	return p.graph, err
 }
@@ -97,18 +110,7 @@ outer:
 	return nil
 }
 
-/*
-	Endpoint /api/v1/comments {
-	  args {
-	    page?: int64
-	  }
-
-	  fields {
-		comments []Comment
-	  }
-	}
-*/
-func (p *parser) parseEndpoint(l *lexer.Lexer) error {
+func (p *parser) parseEndpoint(l *lexer.Lexer) (err error) {
 	expect(l, lexer.LexWhitespace)
 	method := expect(l, lexer.LexIdentifier).Value
 
@@ -226,6 +228,7 @@ func (p *parser) parseType(l *lexer.Lexer) error {
 		Fields: make(map[string]Field),
 	}
 
+	// TODO consolidate with parseArgs?
 	for {
 		expect(l, lexer.LexWhitespace)
 
@@ -239,12 +242,24 @@ func (p *parser) parseType(l *lexer.Lexer) error {
 		}
 
 		name := t.Value
-		expect(l, lexer.LexWhitespace)
-		fieldType := expect(l, lexer.LexIdentifier).Value
+		expect(l, lexer.LexColon)
+		skipWhitespace(l)
+
+		identifier := ""
+		switch l.Peek().Kind {
+		case lexer.LexOpenBracket:
+			identifier += expect(l, lexer.LexOpenBracket).Value
+			identifier += expect(l, lexer.LexCloseBracket).Value
+			identifier += expect(l, lexer.LexIdentifier).Value
+		case lexer.LexIdentifier:
+			identifier += expect(l, lexer.LexIdentifier).Value
+		default:
+			l.PanicForToken(l.Peek(), lexer.LexIdentifier)
+		}
 
 		graphType.Fields[name] = Field{
 			Name: name,
-			Type: fieldType,
+			Type: identifier,
 		}
 	}
 

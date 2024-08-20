@@ -14,7 +14,7 @@ func TestParser(t *testing.T) {
 	}{
 		{
 			desc:  "basic partial",
-			input: `Type Comment { id int64 }`,
+			input: `Type Comment { id: int64 }`,
 			expectedGraph: &Graph{
 				Endpoints: map[string]*Endpoint{},
 				Types: map[string]*Type{

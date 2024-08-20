@@ -1,0 +1,10 @@
+Type Comment {
+    id: int64
+    body: string
+}
+
+Endpoint GET "/api/comments" {
+   fields {
+        comments: []Comment
+   }
+}

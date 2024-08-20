@@ -7,7 +7,7 @@ import (
 )
 
 func TestLex(t *testing.T) {
-	lexer := NewLexer(`Type Comment { id int64 }`)
+	lexer := NewLexer(`Type Comment { id: int64 }`)
 
 	requireToken(t, lexer.Next(), LexIdentifier, "Type")
 	requireToken(t, lexer.Next(), LexWhitespace, " ")
@@ -16,6 +16,7 @@ func TestLex(t *testing.T) {
 	requireToken(t, lexer.Next(), LexOpenCurly, "{")
 	requireToken(t, lexer.Next(), LexWhitespace, " ")
 	requireToken(t, lexer.Next(), LexIdentifier, "id")
+	requireToken(t, lexer.Next(), LexColon, ":")
 	requireToken(t, lexer.Next(), LexWhitespace, " ")
 	requireToken(t, lexer.Next(), LexIdentifier, "int64")
 	requireToken(t, lexer.Next(), LexWhitespace, " ")
@@ -26,7 +27,7 @@ func TestLexEndpoint(t *testing.T) {
 	lexer := NewLexer(`Endpoint GET "/api/v1/comments" {
 			args { page?: int64 }
 			fields {
-				comments []Comment
+				comments: []Comment
 			}
 		}`,
 	)
@@ -58,6 +59,7 @@ func TestLexEndpoint(t *testing.T) {
 	requireToken(t, lexer.Next(), LexOpenCurly, "{")
 	requireToken(t, lexer.Next(), LexWhitespace, "\n\t\t\t\t")
 	requireToken(t, lexer.Next(), LexIdentifier, "comments")
+	requireToken(t, lexer.Next(), LexColon, ":")
 
 	requireToken(t, lexer.Next(), LexWhitespace, " ")
 	requireToken(t, lexer.Next(), LexOpenBracket, "[")
