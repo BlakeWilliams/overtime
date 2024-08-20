@@ -9,18 +9,18 @@ type LexKind string
 
 const (
 	LexEOF          LexKind = "eof"
-	LexComment              = "comment"
-	LexIdentifier           = "identifier"
-	LexWhitespace           = "whitespace"
-	LexDash                 = "dash"
-	LexColon                = "colon"
-	LexOpenCurly            = "open_curly"
-	LexCloseCurly           = "close_curly"
-	LexQuestion             = "question"
-	LexOpenBracket          = "open_bracket"
-	LexCloseBracket         = "close_bracket"
-	LexSlash                = "slash"
-	LexString               = "string"
+	LexComment      LexKind = "comment"
+	LexIdentifier   LexKind = "identifier"
+	LexWhitespace   LexKind = "whitespace"
+	LexDash         LexKind = "dash"
+	LexColon        LexKind = "colon"
+	LexOpenCurly    LexKind = "open_curly"
+	LexCloseCurly   LexKind = "close_curly"
+	LexQuestion     LexKind = "question"
+	LexOpenBracket  LexKind = "open_bracket"
+	LexCloseBracket LexKind = "close_bracket"
+	LexSlash        LexKind = "slash"
+	LexString       LexKind = "string"
 )
 
 type Token struct {
