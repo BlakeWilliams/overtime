@@ -7,9 +7,9 @@ import (
 )
 
 func TestLex(t *testing.T) {
-	lexer := NewLexer(`Partial Comment { id int64 }`)
+	lexer := NewLexer(`Type Comment { id int64 }`)
 
-	requireToken(t, lexer.Next(), LexIdentifier, "Partial")
+	requireToken(t, lexer.Next(), LexIdentifier, "Type")
 	requireToken(t, lexer.Next(), LexWhitespace, " ")
 	requireToken(t, lexer.Next(), LexIdentifier, "Comment")
 	requireToken(t, lexer.Next(), LexWhitespace, " ")

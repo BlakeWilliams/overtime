@@ -10,23 +10,22 @@ type (
 	// single schema that can be used to generate a gateway.
 	Graph struct {
 		Endpoints map[string]*Endpoint
-		Partials  map[string]*Partial
+		Types     map[string]*Type
 	}
 
 	// Endpoint represents a single endpoint in the schema. It is composed of
-	// a path, partials, and fields.
+	// a path, types, and fields.
 	Endpoint struct {
-		Path     string
-		Method   string
-		Partials []Partial
-		Args     map[string]Field
-		Fields   map[string]Field
+		Path   string
+		Method string
+		Args   map[string]Field
+		Fields map[string]Field
 	}
 
-	// Partial represents a single partial in the schema. It is composed of a
+	// Type represents a single partial in the schema. It is composed of a
 	// name and a list of fields. It is the primary tool to keep consistency
 	// within the schema.
-	Partial struct {
+	Type struct {
 		Name   string
 		Fields map[string]Field
 		// TODO fit in federation pieces here
@@ -53,7 +52,7 @@ func Parse(input string) (*Graph, error) {
 	p := &parser{
 		graph: &Graph{
 			Endpoints: make(map[string]*Endpoint),
-			Partials:  make(map[string]*Partial),
+			Types:     make(map[string]*Type),
 		},
 	}
 
@@ -75,13 +74,14 @@ outer:
 		case lexer.LexComment:
 			continue
 		case lexer.LexIdentifier:
-			if t.Value == "Endpoint" {
+			switch t.Value {
+			case "Endpoint":
 				err := p.parseEndpoint(l)
 				if err != nil {
 					return err
 				}
-			} else if t.Value == "Partial" {
-				err := p.parsePartial(l)
+			case "Type":
+				err := p.parseType(l)
 				if err != nil {
 					return err
 				}
@@ -214,14 +214,14 @@ func (p *parser) parseArgs(l *lexer.Lexer, endpoint *Endpoint, supportsOptional 
 	}
 }
 
-func (p *parser) parsePartial(l *lexer.Lexer) error {
+func (p *parser) parseType(l *lexer.Lexer) error {
 	expect(l, lexer.LexWhitespace)
 	name := expect(l, lexer.LexIdentifier).Value
 
 	expect(l, lexer.LexWhitespace)
 	expect(l, lexer.LexOpenCurly)
 
-	partial := &Partial{
+	graphType := &Type{
 		Name:   name,
 		Fields: make(map[string]Field),
 	}
@@ -242,13 +242,13 @@ func (p *parser) parsePartial(l *lexer.Lexer) error {
 		expect(l, lexer.LexWhitespace)
 		fieldType := expect(l, lexer.LexIdentifier).Value
 
-		partial.Fields[name] = Field{
+		graphType.Fields[name] = Field{
 			Name: name,
 			Type: fieldType,
 		}
 	}
 
-	p.graph.Partials[name] = partial
+	p.graph.Types[name] = graphType
 
 	return nil
 }

@@ -14,10 +14,10 @@ func TestParser(t *testing.T) {
 	}{
 		{
 			desc:  "basic partial",
-			input: `Partial Comment { id int64 }`,
+			input: `Type Comment { id int64 }`,
 			expectedGraph: &Graph{
 				Endpoints: map[string]*Endpoint{},
-				Partials: map[string]*Partial{
+				Types: map[string]*Type{
 					"Comment": {
 						Name: "Comment",
 						Fields: map[string]Field{
@@ -37,11 +37,12 @@ func TestParser(t *testing.T) {
 					args { page?: int64 }
 					fields {
 						comments: []Comment
+						page: int
 					}
 				}`,
 
 			expectedGraph: &Graph{
-				Partials: map[string]*Partial{},
+				Types: map[string]*Type{},
 				Endpoints: map[string]*Endpoint{
 					"/api/v1/comments": {
 						Method: "GET",
@@ -58,6 +59,10 @@ func TestParser(t *testing.T) {
 								Name: "comments",
 								Type: "[]Comment",
 							},
+							"page": {
+								Name: "page",
+								Type: "int",
+							},
 						},
 					},
 				},
@@ -69,8 +74,8 @@ func TestParser(t *testing.T) {
 			graph, err := Parse(tC.input)
 			require.NoError(t, err)
 
-			for name, partial := range graph.Partials {
-				require.Equal(t, tC.expectedGraph.Partials[name], partial)
+			for name, partial := range graph.Types {
+				require.Equal(t, tC.expectedGraph.Types[name], partial)
 			}
 
 			for path, endpoint := range graph.Endpoints {

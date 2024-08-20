@@ -5,23 +5,6 @@ import (
 	"unicode"
 )
 
-// This is the language definition for the Overtime DSL
-/*
-	Partial Comment {
-	  id int64
-	  title string
-	}
-
-	Endpoint GET "/api/v1/comments" {
-	  args {
-	    page?: int64
-	  }
-
-	  fields {
-		comments []Comment
-	  }
-	}
-*/
 type LexKind string
 
 const (
@@ -164,7 +147,7 @@ func (l *Lexer) emitIdentifier() Token {
 func (l *Lexer) emitString() Token {
 	for {
 		if l.Pos >= len(l.Input) {
-			panic("Unterminated string")
+			panic(fmt.Sprintf("Unterminated string starting at %d", l.StartPos))
 		}
 
 		next := l.nextChar()
