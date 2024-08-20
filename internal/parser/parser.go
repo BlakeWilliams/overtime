@@ -143,9 +143,9 @@ outer:
 		case lexer.LexIdentifier:
 			switch next.Value {
 			case "args":
-				p.parseArgs(l, endpoint, true)
+				p.parseFields(l, endpoint.Args, true)
 			case "fields":
-				p.parseArgs(l, endpoint, false)
+				p.parseFields(l, endpoint.Fields, false)
 			default:
 				l.PanicForToken(next, lexer.LexIdentifier)
 			}
@@ -157,7 +157,7 @@ outer:
 	return nil
 }
 
-func (p *parser) parseArgs(l *lexer.Lexer, endpoint *Endpoint, supportsOptional bool) {
+func (p *parser) parseFields(l *lexer.Lexer, target map[string]Field, supportsOptional bool) {
 	expect(l, lexer.LexWhitespace)
 	expect(l, lexer.LexOpenCurly)
 	expect(l, lexer.LexWhitespace)
@@ -202,10 +202,6 @@ func (p *parser) parseArgs(l *lexer.Lexer, endpoint *Endpoint, supportsOptional 
 			l.PanicForToken(l.Peek(), lexer.LexIdentifier)
 		}
 
-		target := endpoint.Args
-		if !supportsOptional {
-			target = endpoint.Fields
-		}
 		target[name] = Field{
 			Name:       name,
 			Type:       identifier,
@@ -220,48 +216,12 @@ func (p *parser) parseType(l *lexer.Lexer) error {
 	expect(l, lexer.LexWhitespace)
 	name := expect(l, lexer.LexIdentifier).Value
 
-	expect(l, lexer.LexWhitespace)
-	expect(l, lexer.LexOpenCurly)
-
 	graphType := &Type{
 		Name:   name,
 		Fields: make(map[string]Field),
 	}
 
-	// TODO consolidate with parseArgs?
-	for {
-		expect(l, lexer.LexWhitespace)
-
-		t := l.Next()
-		if t.Kind == lexer.LexCloseCurly {
-			break
-		}
-
-		if t.Kind != lexer.LexIdentifier {
-			panic("unexpected token, expected identifier")
-		}
-
-		name := t.Value
-		expect(l, lexer.LexColon)
-		skipWhitespace(l)
-
-		identifier := ""
-		switch l.Peek().Kind {
-		case lexer.LexOpenBracket:
-			identifier += expect(l, lexer.LexOpenBracket).Value
-			identifier += expect(l, lexer.LexCloseBracket).Value
-			identifier += expect(l, lexer.LexIdentifier).Value
-		case lexer.LexIdentifier:
-			identifier += expect(l, lexer.LexIdentifier).Value
-		default:
-			l.PanicForToken(l.Peek(), lexer.LexIdentifier)
-		}
-
-		graphType.Fields[name] = Field{
-			Name: name,
-			Type: identifier,
-		}
-	}
+	p.parseFields(l, graphType.Fields, false)
 
 	p.graph.Types[name] = graphType
 
