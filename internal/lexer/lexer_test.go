@@ -72,6 +72,33 @@ func TestLexEndpoint(t *testing.T) {
 	requireToken(t, lexer.Next(), LexEOF, "")
 }
 
+func TestComments(t *testing.T) {
+	t.Run("single line", func(t *testing.T) {
+		lexer := NewLexer(`# Hello world`)
+		requireToken(t, lexer.Next(), LexComment, "# Hello world")
+	})
+
+	t.Run("leading space", func(t *testing.T) {
+		lexer := NewLexer(` # Hello world`)
+		requireToken(t, lexer.Next(), LexWhitespace, " ")
+		requireToken(t, lexer.Next(), LexComment, "# Hello world")
+	})
+
+	t.Run("multi-line", func(t *testing.T) {
+		lexer := NewLexer(" # Hello world\n# Whatsup?")
+		requireToken(t, lexer.Next(), LexWhitespace, " ")
+		requireToken(t, lexer.Next(), LexComment, "# Hello world\n# Whatsup?")
+	})
+
+	t.Run("multi-line with content", func(t *testing.T) {
+		lexer := NewLexer(" # Hello world\n# Whatsup?\n type Foo {}")
+		requireToken(t, lexer.Next(), LexWhitespace, " ")
+		requireToken(t, lexer.Next(), LexComment, "# Hello world\n# Whatsup?")
+		requireToken(t, lexer.Next(), LexWhitespace, "\n ")
+		requireToken(t, lexer.Next(), LexIdentifier, "type")
+	})
+}
+
 func requireToken(t testing.TB, input Token, kind LexKind, value string) {
 	require.Equal(t, kind, input.Kind)
 	require.Equal(t, value, input.Value)

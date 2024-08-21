@@ -15,12 +15,12 @@ type-safe, efficient APIs.
 WIP, but here's an example of what the DSL looks like:
 
 ```
-Type Comment {
+type Comment {
   id: int64
   body: string
 }
 
-Type Post {
+type Post {
   fields {
     id: int64
     title: string
@@ -29,14 +29,28 @@ Type Post {
   }
 }
 
-Endpoint GET "/api/posts" {
-  args {
+GET "/api/posts" {
+  input {
     page?: int
   }
 
-  fields {
-    posts: []Post
-  }
+  returns []Post
+}
+```
+
+Endpoints can control what data type they return by specifying a `returns` block that is either an object, or an array.
+
+**Array**:
+
+```
+  returns []Post
+}
+```
+
+**Type**:
+
+```
+  fields Post
 }
 ```
 

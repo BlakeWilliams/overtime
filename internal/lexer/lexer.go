@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"regexp"
 	"unicode"
 )
 
@@ -91,6 +92,8 @@ func (l *Lexer) Next() Token {
 		return l.emit(LexCloseBracket)
 	case '/':
 		return l.emit(LexSlash)
+	case '#':
+		return l.emitComment()
 	default:
 		if unicode.IsLetter(rune(ch)) {
 			return l.emitIdentifier()
@@ -168,4 +171,22 @@ func (l *Lexer) emitString() Token {
 	}
 
 	return l.emit(LexString)
+}
+
+var commentRegex = regexp.MustCompile(`^\s*#.*?`)
+
+func (l *Lexer) emitComment() Token {
+	for {
+		if l.Pos >= len(l.Input) {
+			break
+		}
+
+		if l.Input[l.Pos] == '\n' && len(l.Input) > l.Pos+1 && !commentRegex.MatchString(string(l.Input[l.Pos+1:])) {
+			break
+		}
+
+		l.Pos++
+	}
+
+	return l.emit(LexComment)
 }

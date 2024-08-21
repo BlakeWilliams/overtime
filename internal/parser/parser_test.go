@@ -14,7 +14,7 @@ func TestParser(t *testing.T) {
 	}{
 		{
 			desc:  "basic partial",
-			input: `Type Comment { id: int64 }`,
+			input: `type Comment { id: int64 }`,
 			expectedGraph: &Graph{
 				Endpoints: map[string]*Endpoint{},
 				Types: map[string]*Type{
@@ -33,12 +33,10 @@ func TestParser(t *testing.T) {
 		{
 			desc: "basic endpoint",
 			input: `
-				Endpoint GET "/api/v1/comments" {
-					args { page?: int64 }
-					fields {
-						comments: []Comment
-						page: int
-					}
+				GET "/api/v1/comments" {
+					name: GetComments
+					input: { page?: int64 }
+					returns: []Comment
 				}`,
 
 			expectedGraph: &Graph{
@@ -46,6 +44,7 @@ func TestParser(t *testing.T) {
 				Endpoints: map[string]*Endpoint{
 					"/api/v1/comments": {
 						Method: "GET",
+						Name:   "GetComments",
 						Path:   "/api/v1/comments",
 						Args: map[string]Field{
 							"page": {
@@ -54,16 +53,41 @@ func TestParser(t *testing.T) {
 								IsOptional: true,
 							},
 						},
-						Fields: map[string]Field{
-							"comments": {
-								Name: "comments",
-								Type: "[]Comment",
-							},
+						Returns: "[]Comment",
+					},
+				},
+			},
+		},
+		{
+			desc: "basic endpoint with comments",
+			input: `
+				# GetComments returns a list of comments
+				GET "/api/v1/comments" { # Shouldn't break
+					name: GetComments # shouldn't break either
+					input: {
+						# page is the page number
+						page?: int64
+					}
+					returns: []Comment
+				}`,
+
+			expectedGraph: &Graph{
+				Types: map[string]*Type{},
+				Endpoints: map[string]*Endpoint{
+					"/api/v1/comments": {
+						DocComment: "GetComments returns a list of comments",
+						Method:     "GET",
+						Name:       "GetComments",
+						Path:       "/api/v1/comments",
+						Args: map[string]Field{
 							"page": {
-								Name: "page",
-								Type: "int",
+								Name:       "page",
+								Type:       "int64",
+								IsOptional: true,
+								DocComment: "page is the page number",
 							},
 						},
+						Returns: "[]Comment",
 					},
 				},
 			},

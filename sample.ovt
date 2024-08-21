@@ -1,10 +1,16 @@
-Type Comment {
+type Comment {
     id: int64
     body: string
 }
 
-Endpoint GET "/api/comments" {
-   fields {
-        comments: []Comment
-   }
+type EnhancedComment {
+    ...Comment
+    page: int64
+}
+
+namespace "/api/v1" {
+    GET "/api/comments" {
+        name: GetComments
+        returns: []EnhancedComment
+    }
 }

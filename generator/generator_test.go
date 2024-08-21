@@ -12,8 +12,11 @@ import (
 
 func TestGoTypes(t *testing.T) {
 	graph, err := parser.Parse(`
-		Type Comment {
+		# A comment on a post
+		type Comment {
+			# The ID of the comment
 			id: int64
+			# The body of the comment
 			body: string
 		}`)
 
@@ -37,11 +40,11 @@ func TestGoTypes(t *testing.T) {
 
 func TestGoResolvers(t *testing.T) {
 	graph, err := parser.Parse(`
-		Type Comment {
+		type Comment {
 			id: int64
 			body: string
 		}
-		Type Post {
+		type Post {
 			id: int64
 			comments: []Comment
 		}`)
@@ -58,6 +61,57 @@ func TestGoResolvers(t *testing.T) {
 	require.Contains(t, string(out), `package mytypes`)
 	require.Contains(t, string(out), "type Resolver interface")
 	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) map[int64]Comment")
+
+	fset := token.NewFileSet()
+	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
+	require.NoError(t, err, "Generated code should parse without errors")
+}
+
+func TestGoEndpoints(t *testing.T) {
+	graph, err := parser.Parse(`
+		type Comment {
+			id: int64
+			body: string
+		}
+
+		GET "/api/v1/comments/:commentID" {
+			name: GetCommentByID
+			returns: Comment
+		}`)
+
+	require.NoError(t, err)
+
+	gen := NewGo(graph)
+	gen.PackageName = "mytypes"
+
+	writer := gen.Endpoints()
+	out, err := io.ReadAll(writer)
+	require.NoError(t, err)
+
+	require.Contains(t, string(out), `package mytypes`)
+	require.Contains(t, string(out), "type Controller interface")
+	require.Contains(t, string(out), "GetCommentByID(w http.ResponseWriter, r *http.Request)")
+
+	fset := token.NewFileSet()
+	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
+	require.NoError(t, err, "Generated code should parse without errors")
+}
+
+func TestRoot(t *testing.T) {
+	graph, err := parser.Parse(``)
+
+	require.NoError(t, err)
+
+	gen := NewGo(graph)
+	gen.PackageName = "mytypes"
+
+	writer := gen.Root()
+	out, err := io.ReadAll(writer)
+	require.NoError(t, err)
+
+	require.Contains(t, string(out), `package mytypes`)
+	require.Contains(t, string(out), "type RootResolver")
+	require.Contains(t, string(out), "type RootController")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)

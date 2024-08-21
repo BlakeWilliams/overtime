@@ -1,49 +1,17 @@
 package parser
 
 import (
+	"regexp"
+	"strings"
+	"sync"
+
 	"github.com/blakewilliams/overtime/internal/lexer"
 )
 
 type (
-	// Graph represents the entire schema for all federated services and is
-	// responsible for combining the relevant schemas of each service into a
-	// single schema that can be used to generate a gateway.
-	Graph struct {
-		Endpoints map[string]*Endpoint
-		Types     map[string]*Type
-	}
-
-	// Endpoint represents a single endpoint in the schema. It is composed of
-	// a path, types, and fields.
-	Endpoint struct {
-		Path   string
-		Method string
-		Args   map[string]Field
-		Fields map[string]Field
-	}
-
-	// Type represents a single partial in the schema. It is composed of a
-	// name and a list of fields. It is the primary tool to keep consistency
-	// within the schema.
-	Type struct {
-		Name   string
-		Fields map[string]Field
-		// TODO fit in federation pieces here
-	}
-
-	// Field represents a single field in the schema. It is composed of a name
-	// and a type. The type is a string that represents the type of the field.
-	// This is a string because the type could be a scalar, an object, or a
-	// list of objects.
-	Field struct {
-		Name       string
-		Type       string
-		IsOptional bool
-		IsPartial  bool
-	}
-
 	parser struct {
-		graph *Graph
+		graph       *Graph
+		lastComment string
 	}
 )
 
@@ -71,6 +39,12 @@ func Parse(input string) (g *Graph, err error) {
 
 	err = p.parse(l)
 
+	for _, e := range p.graph.Endpoints {
+		if err := e.Validate(); err != nil {
+			return p.graph, err
+		}
+	}
+
 	return p.graph, err
 }
 
@@ -85,44 +59,47 @@ outer:
 		case lexer.LexWhitespace:
 			continue
 		case lexer.LexComment:
+			p.lastComment = t.Value
 			continue
 		case lexer.LexIdentifier:
 			switch t.Value {
-			case "Endpoint":
-				err := p.parseEndpoint(l)
+			case "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE", "CONNECT":
+				err := p.parseEndpoint(l, t.Value)
 				if err != nil {
 					return err
 				}
-			case "Type":
+			case "type":
 				err := p.parseType(l)
 				if err != nil {
 					return err
 				}
 			}
 		default:
-			if t.Kind == "" {
-				break
-			}
 			l.PanicForToken(t, lexer.LexIdentifier)
 		}
 	}
 
+	p.lastComment = ""
+
 	return nil
 }
 
-func (p *parser) parseEndpoint(l *lexer.Lexer) (err error) {
-	expect(l, lexer.LexWhitespace)
-	method := expect(l, lexer.LexIdentifier).Value
+func (p *parser) consumeComment() string {
+	c := sanitizeComment(p.lastComment)
+	p.lastComment = ""
+	return c
+}
 
+func (p *parser) parseEndpoint(l *lexer.Lexer, method string) (err error) {
 	expect(l, lexer.LexWhitespace)
 	path := expect(l, lexer.LexString).Value
 	path = path[1 : len(path)-1]
 
 	endpoint := &Endpoint{
-		Path:   path,
-		Method: method,
-		Args:   make(map[string]Field),
-		Fields: make(map[string]Field),
+		Path:       path,
+		Method:     method,
+		Args:       make(map[string]Field),
+		DocComment: p.consumeComment(),
 	}
 
 	_, ok := p.graph.Endpoints[endpoint.Path]
@@ -142,10 +119,16 @@ outer:
 			break outer
 		case lexer.LexIdentifier:
 			switch next.Value {
-			case "args":
+			case "input":
+				expect(l, lexer.LexColon)
 				p.parseFields(l, endpoint.Args, true)
-			case "fields":
-				p.parseFields(l, endpoint.Fields, false)
+			case "returns":
+				p.parseEndpointReturn(l, endpoint)
+			case "name":
+				expect(l, lexer.LexColon)
+				skipWhitespace(l)
+				name := expect(l, lexer.LexIdentifier).Value
+				endpoint.Name = name
 			default:
 				l.PanicForToken(next, lexer.LexIdentifier)
 			}
@@ -157,6 +140,24 @@ outer:
 	return nil
 }
 
+func (p *parser) parseEndpointReturn(l *lexer.Lexer, e *Endpoint) {
+	expect(l, lexer.LexColon)
+	skipWhitespace(l)
+
+	next := l.Next()
+	switch next.Kind {
+	case lexer.LexOpenBracket:
+		expect(l, lexer.LexCloseBracket)
+		rawType := expect(l, lexer.LexIdentifier)
+
+		e.Returns = "[]" + rawType.Value
+	case lexer.LexIdentifier:
+		e.Returns = next.Value
+	default:
+		l.PanicForToken(next, lexer.LexIdentifier)
+	}
+}
+
 func (p *parser) parseFields(l *lexer.Lexer, target map[string]Field, supportsOptional bool) {
 	expect(l, lexer.LexWhitespace)
 	expect(l, lexer.LexOpenCurly)
@@ -166,6 +167,13 @@ func (p *parser) parseFields(l *lexer.Lexer, target map[string]Field, supportsOp
 		t := l.Next()
 		if t.Kind == lexer.LexCloseCurly {
 			break
+		}
+
+		comment := ""
+		if t.Kind == lexer.LexComment {
+			comment = t.Value
+			skipWhitespace(l)
+			t = l.Next()
 		}
 
 		if t.Kind != lexer.LexIdentifier {
@@ -206,6 +214,7 @@ func (p *parser) parseFields(l *lexer.Lexer, target map[string]Field, supportsOp
 			Name:       name,
 			Type:       identifier,
 			IsOptional: optional,
+			DocComment: sanitizeComment(comment),
 		}
 
 		expect(l, lexer.LexWhitespace)
@@ -217,8 +226,9 @@ func (p *parser) parseType(l *lexer.Lexer) error {
 	name := expect(l, lexer.LexIdentifier).Value
 
 	graphType := &Type{
-		Name:   name,
-		Fields: make(map[string]Field),
+		Name:       name,
+		Fields:     make(map[string]Field),
+		DocComment: p.consumeComment(),
 	}
 
 	p.parseFields(l, graphType.Fields, false)
@@ -248,9 +258,55 @@ func skipWhitespace(l *lexer.Lexer) {
 
 func expect(l *lexer.Lexer, kind lexer.LexKind) lexer.Token {
 	t := l.Next()
+	if t.Kind == lexer.LexComment {
+		t = l.Next()
+	}
 	if t.Kind != kind {
 		l.PanicForToken(t, kind)
 	}
 
 	return t
+}
+
+var commentContentRegex = regexp.MustCompile(`^\s*#(.*?)(\r\n|\r|\n)?$`)
+
+func sanitizeComment(comment string) string {
+	if comment == "" {
+		return ""
+	}
+
+	parts := strings.Split(comment, "\n")
+	formatted := strings.Builder{}
+
+	countWhitespace := sync.Once{}
+	leadingWhitespace := 0
+
+	for _, part := range parts {
+		if strings.TrimSpace(part) == "" {
+			formatted.WriteString("\n\n")
+			continue
+		}
+
+		if matches := commentContentRegex.FindStringSubmatch(part); len(matches) > 1 {
+			content := matches[1]
+			countWhitespace.Do(func() {
+				leadingWhitespace = countLeadingWhitespace(content)
+			})
+
+			formatted.WriteString(content[leadingWhitespace:])
+		}
+
+	}
+
+	return formatted.String()
+}
+
+func countLeadingWhitespace(s string) int {
+	for i, r := range []rune(s) {
+		if r != ' ' {
+			return i
+		}
+	}
+
+	return 0
 }
