@@ -36,9 +36,9 @@ func (g *Go) Root() io.Reader {
 	buf.WriteString(fmt.Sprintf("package %s\n\n", g.PackageName))
 
 	buf.WriteString("type RootResolver struct {}\n\n")
-	buf.WriteString("var _ Resolver = (nil)(*RootResolver)\n\n")
+	buf.WriteString("var _ Resolver = (*RootResolver)(nil)\n\n")
 	buf.WriteString("type RootController struct {}\n\n")
-	buf.WriteString("var _ Controller = (nil)(*RootController)\n\n")
+	buf.WriteString("var _ Controller = (*RootController)(nil)\n\n")
 
 	return buf
 }
@@ -51,11 +51,7 @@ func (g *Go) Endpoints() io.Reader {
 
 	buf.WriteString("type Controller interface {\n")
 	for _, e := range g.graph.Endpoints {
-		methodName := fmt.Sprintf(
-			"%s%s",
-			capitalize(strings.ToLower(e.Method)),
-			capitalize(e.Name),
-		)
+		methodName := capitalize(e.Name)
 
 		buf.WriteString(
 			fmt.Sprintf(
