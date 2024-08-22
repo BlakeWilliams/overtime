@@ -3,6 +3,7 @@ package generator
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"io"
 	"strings"
 	"unicode"
@@ -40,7 +41,7 @@ func (g *Go) Root() io.Reader {
 	buf.WriteString("type RootController struct {}\n\n")
 	buf.WriteString("var _ Controller = (*RootController)(nil)\n\n")
 
-	return buf
+	return formatCode(buf)
 }
 
 func (g *Go) Endpoints() io.Reader {
@@ -66,7 +67,7 @@ func (g *Go) Endpoints() io.Reader {
 		buf.WriteString("}\n")
 	}
 
-	return buf
+	return formatCode(buf)
 }
 
 func (g *Go) Types() io.Reader {
@@ -92,7 +93,7 @@ func (g *Go) Types() io.Reader {
 		buf.WriteString("}\n\n")
 	}
 
-	return buf
+	return formatCode(buf)
 }
 
 func (g *Go) Resolvers() io.Reader {
@@ -139,7 +140,7 @@ func (g *Go) Resolvers() io.Reader {
 
 	buf.WriteString("}\n\n")
 
-	return buf
+	return formatCode(buf)
 }
 
 func uncapitalize(s string) string {
@@ -160,4 +161,13 @@ func capitalize(s string) string {
 	r := []rune(s)
 
 	return string(append([]rune{unicode.ToUpper(r[0])}, r[1:]...))
+}
+
+func formatCode(b *bytes.Buffer) io.Reader {
+	formatted, err := format.Source(b.Bytes())
+	if err != nil {
+		panic(err)
+	}
+
+	return bytes.NewReader(formatted)
 }
