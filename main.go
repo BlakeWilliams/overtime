@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 
 	"github.com/blakewilliams/overtime/generator"
@@ -101,14 +102,20 @@ func main() {
 
 func writeFile(path string, r io.Reader) error {
 	f, err := os.Create(path)
-	defer f.Close()
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
 	_, err = io.Copy(f, r)
 	if err != nil {
 		return fmt.Errorf("Failed to write to file %s: %w", path, err)
+	}
+
+	// run go fmt on the file
+	cmd := exec.Command("gofmt", "-w", path)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("Failed to run gofmt on file %s: %w", path, err)
 	}
 
 	return nil
