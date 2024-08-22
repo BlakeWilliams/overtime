@@ -35,6 +35,10 @@ func main() {
 						Name:  "package name",
 						Usage: "The name of the package to generate",
 					},
+					&cli.StringFlag{
+						Name:  "directory",
+						Usage: "The directory to create the package in. Pro Tip™ use '..' + `go generate` in your impl.go file",
+					},
 				},
 				Usage: "Generate a REST gateway from a schema",
 				Action: func(c *cli.Context) error {
@@ -64,24 +68,29 @@ func main() {
 						gen.PackageName = packageName
 					}
 
+					rootPath := gen.PackageName
+					if directory := c.String("directory"); directory != "" {
+						rootPath = path.Join(directory, gen.PackageName)
+					}
+
 					_ = os.Mkdir(gen.PackageName, 0755)
-					err = writeFile(path.Join(gen.PackageName, "types.go"), gen.Types())
+					err = writeFile(path.Join(rootPath, "types.go"), gen.Types())
 					if err != nil {
 						return err
 					}
 
-					if err := writeFile(path.Join(gen.PackageName, "types.go"), gen.Types()); err != nil {
+					if err := writeFile(path.Join(rootPath, "types.go"), gen.Types()); err != nil {
 						return err
 					}
-					if err := writeFile(path.Join(gen.PackageName, "resolvers.go"), gen.Resolvers()); err != nil {
+					if err := writeFile(path.Join(rootPath, "resolvers.go"), gen.Resolvers()); err != nil {
 						return err
 					}
-					if err := writeFile(path.Join(gen.PackageName, "endpoints.go"), gen.Endpoints()); err != nil {
+					if err := writeFile(path.Join(rootPath, "endpoints.go"), gen.Endpoints()); err != nil {
 						return err
 					}
 
-					if _, err := os.Stat(path.Join(gen.PackageName, "impl.go")); os.IsNotExist(err) {
-						if err := writeFile(path.Join(gen.PackageName, "impl.go"), gen.Root()); err != nil {
+					if _, err := os.Stat(path.Join(rootPath, "impl.go")); os.IsNotExist(err) {
+						if err := writeFile(path.Join(rootPath, "impl.go"), gen.Root()); err != nil {
 							return err
 						}
 					}
@@ -117,6 +126,8 @@ func writeFile(path string, r io.Reader) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("Failed to run gofmt on file %s: %w", path, err)
 	}
+
+	fmt.Printf("Created %s\n", path)
 
 	return nil
 }
