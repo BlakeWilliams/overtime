@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path"
 
+	"github.com/blakewilliams/overtime/generator"
 	"github.com/blakewilliams/overtime/internal/parser"
 	"github.com/urfave/cli/v2"
 )
@@ -26,7 +29,13 @@ func main() {
 			{
 				Name:    "generate",
 				Aliases: []string{"g"},
-				Usage:   "Generate a REST gateway from a schema",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "package name",
+						Usage: "The name of the package to generate",
+					},
+				},
+				Usage: "Generate a REST gateway from a schema",
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() < 1 {
 						return fmt.Errorf("You must pass a schema file to generate")
@@ -48,10 +57,34 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("Failed to parse the schema: %w", err)
 					}
+					gen := generator.NewGo(graph)
+					gen.PackageName = "overtime"
+					if packageName := c.String("package name"); packageName != "" {
+						gen.PackageName = packageName
+					}
 
-					fmt.Println(graph)
+					_ = os.Mkdir(gen.PackageName, 0755)
+					err = writeFile(path.Join(gen.PackageName, "types.go"), gen.Types())
+					if err != nil {
+						return err
+					}
 
-					// check if file exists first
+					if err := writeFile(path.Join(gen.PackageName, "types.go"), gen.Types()); err != nil {
+						return err
+					}
+					if err := writeFile(path.Join(gen.PackageName, "resolvers.go"), gen.Resolvers()); err != nil {
+						return err
+					}
+					if err := writeFile(path.Join(gen.PackageName, "endpoints.go"), gen.Endpoints()); err != nil {
+						return err
+					}
+
+					if _, err := os.Stat(path.Join(gen.PackageName, "impl.go")); os.IsNotExist(err) {
+						if err := writeFile(path.Join(gen.PackageName, "impl.go"), gen.Root()); err != nil {
+							return err
+						}
+					}
+
 					return nil
 				},
 			},
@@ -64,4 +97,19 @@ func main() {
 			os.Exit(1)
 		}()
 	}
+}
+
+func writeFile(path string, r io.Reader) error {
+	f, err := os.Create(path)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(f, r)
+	if err != nil {
+		return fmt.Errorf("Failed to write to file %s: %w", path, err)
+	}
+
+	return nil
 }
