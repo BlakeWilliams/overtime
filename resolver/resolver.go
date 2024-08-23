@@ -73,22 +73,6 @@ func Resolve(target any, resolver any) error {
 				return fmt.Errorf("field %s is not valid or cannot be set", fieldName)
 			}
 
-			// Initialize the field if it is zero
-			if field.IsZero() {
-				switch field.Kind() {
-				case reflect.Ptr:
-					field.Set(reflect.New(field.Type().Elem()))
-				case reflect.Slice:
-					field.Set(reflect.MakeSlice(field.Type(), 0, 0))
-				case reflect.Map:
-					field.Set(reflect.MakeMap(field.Type()))
-				case reflect.Struct:
-					field.Set(reflect.New(field.Type()).Elem())
-				default:
-					return fmt.Errorf("unsupported kind %s for field %s", field.Kind(), fieldName)
-				}
-			}
-
 			if value := resultMap.MapIndex(reflect.ValueOf(id)); value.IsValid() {
 				field.Set(value)
 			}
