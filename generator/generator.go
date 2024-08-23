@@ -145,7 +145,19 @@ func (g *Go) Types() io.Reader {
 				name = capitalize(f.Name)
 
 			}
-			buf.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"`\n", name, f.Type, f.Name))
+
+			tag := strings.Builder{}
+
+			tag.WriteString(" `")
+			tag.Write([]byte(fmt.Sprintf("json:\"%s\"", f.Name)))
+			normalizedType := strings.TrimPrefix(f.Type, "[]")
+
+			if g.graph.Types[normalizedType] != nil {
+				tag.Write([]byte(fmt.Sprintf(" resolver:\"Resolve%s%s\"", capitalize(t.Name), capitalize(f.Name))))
+			}
+			tag.WriteString("`")
+
+			buf.WriteString(fmt.Sprintf("\t%s %s%s\n", name, f.Type, tag.String()))
 		}
 
 		buf.WriteString("}\n\n")
@@ -170,7 +182,8 @@ func (g *Go) Resolvers() io.Reader {
 				continue
 			}
 
-			if _, isCustomType := g.graph.Types[normalizedType]; !isCustomType {
+			customType := g.graph.Types[normalizedType]
+			if customType == nil {
 				continue
 			}
 
@@ -185,12 +198,12 @@ func (g *Go) Resolvers() io.Reader {
 
 			buf.WriteString(
 				fmt.Sprintf(
-					"\tResolve%s%s(%s) map[%s]%s\n",
+					"\tResolve%s%s(%s) (map[%s]%s, error)\n",
 					capitalize(t.Name),
 					capitalize(f.Name),
 					arguments,
 					idType,
-					capitalize(f.Name),
+					capitalize(customType.Name),
 				),
 			)
 		}

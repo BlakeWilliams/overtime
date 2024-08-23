@@ -4,6 +4,7 @@ import (
 	goparser "go/parser"
 	"go/token"
 	"io"
+	"regexp"
 	"testing"
 
 	"github.com/blakewilliams/overtime/internal/parser"
@@ -18,6 +19,11 @@ func TestGoTypes(t *testing.T) {
 			id: int64
 			# The body of the comment
 			body: string
+		}
+			
+		type Post {
+			id: int64
+			comments: []Comment
 		}`)
 
 	require.NoError(t, err)
@@ -30,8 +36,9 @@ func TestGoTypes(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Contains(t, string(out), `package mytypes`)
-	require.Contains(t, string(out), "ID int64 `json:\"id\"`")
-	require.Contains(t, string(out), "Body string `json:\"body\"`")
+	require.Regexp(t, regexp.MustCompile("ID\\s+int64\\s+`json:\"id\"`"), string(out))
+	require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]Comment\\s+`json:\"comments\" resolver:\"ResolvePostComments\""), string(out))
+	// require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]Comment\\s+`json:\"comments\" resolver:\"`"), string(out))
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
@@ -60,7 +67,7 @@ func TestGoResolvers(t *testing.T) {
 
 	require.Contains(t, string(out), `package mytypes`)
 	require.Contains(t, string(out), "type Resolver interface")
-	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) map[int64]Comment error")
+	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) (map[int64]Comment, error)")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)

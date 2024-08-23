@@ -119,7 +119,6 @@ func fieldsToResolve(t reflect.Value) (map[string]string, error) {
 	reflectType := t.Type()
 	resolverMap := make(map[string]string, 0)
 
-	fmt.Println(t.Kind())
 	for i := 0; i < t.NumField(); i++ {
 		fieldType := reflectType.Field(i)
 		resolverMethod := fieldType.Tag.Get("resolver")
