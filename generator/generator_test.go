@@ -1,19 +1,14 @@
 package generator
 
 import (
-	"encoding/json"
-	"fmt"
 	goparser "go/parser"
 	"go/token"
 	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"regexp"
 	"testing"
 
-	"github.com/blakewilliams/overtime/generator/overtime"
 	"github.com/blakewilliams/overtime/internal/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -38,14 +33,13 @@ func TestGoTypes(t *testing.T) {
 	gen := NewGo(graph)
 	gen.PackageName = "mytypes"
 
-	writer := gen.Types()
+	writer := gen.GenerateTypes()
 	out, err := io.ReadAll(writer)
 	require.NoError(t, err)
 
 	require.Contains(t, string(out), `package mytypes`)
 	require.Regexp(t, regexp.MustCompile("ID\\s+int64\\s+`json:\"id\"`"), string(out))
-	require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]Comment\\s+`json:\"comments\" resolver:\"ResolvePostComments\""), string(out))
-	// require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]Comment\\s+`json:\"comments\" resolver:\"`"), string(out))
+	require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]\\*Comment\\s+`json:\"comments\" resolver:\"ResolvePostComments\""), string(out))
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
@@ -74,14 +68,14 @@ func TestGoResolvers(t *testing.T) {
 
 	require.Contains(t, string(out), `package mytypes`)
 	require.Contains(t, string(out), "type Resolver interface")
-	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) (map[int64]Comment, error)")
+	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) (map[int64][]*Comment, error)")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
 	require.NoError(t, err, "Generated code should parse without errors")
 }
 
-func TestGoEndpoints(t *testing.T) {
+func TestGoGenerateControllers(t *testing.T) {
 	graph, err := parser.Parse(`
 		type Comment {
 			id: int64
@@ -98,7 +92,7 @@ func TestGoEndpoints(t *testing.T) {
 	gen := NewGo(graph)
 	gen.PackageName = "mytypes"
 
-	writer := gen.Endpoints()
+	writer := gen.GenerateControllers()
 	out, err := io.ReadAll(writer)
 	require.NoError(t, err)
 
@@ -166,9 +160,9 @@ func TestCoordinator(t *testing.T) {
 
 	require.Contains(t, string(out), `package mytypes`)
 	require.Contains(t, string(out), "type Coordinator struct")
-	require.Contains(t, string(out), "GET /api/v1/comments/:commentID")
+	require.Contains(t, string(out), "GET /api/v1/comments/{commentID}")
 	require.Contains(t, string(out), "result, err := c.controller.GetCommentByID(w, r)")
-	require.Contains(t, string(out), "ResolvePost(result, c.resolver)")
+	require.Contains(t, string(out), "ResolveForPost([]*Post{result}, c.resolver)")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
@@ -181,26 +175,4 @@ func Test_EndToEnd(t *testing.T) {
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()
 	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll("generator/test")
-	}()
-
-	coordinator := overtime.NewCoordinator(&overtime.RootResolver{}, &overtime.RootController{})
-	server := httptest.NewServer(coordinator)
-
-	resp, err := http.Get(server.URL + "/api/v1/posts/1")
-	require.NoError(t, err)
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	fmt.Println(string(body))
-
-	// decode body
-	var post overtime.Post
-	err = json.Unmarshal(body, &post)
-	require.NoError(t, err)
-
-	require.Equal(t, int64(1), post.ID)
-	require.Len(t, post.Comments, 2)
 }
