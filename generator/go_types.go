@@ -9,6 +9,7 @@ import (
 
 type Endpoint struct {
 	endpoint *parser.Endpoint
+	graph    *parser.Graph
 }
 
 func (ce *Endpoint) Method() string {
@@ -43,6 +44,11 @@ func (ce *Endpoint) Path() string {
 }
 
 func (ce *Endpoint) ResolverMethod() string {
+	goType := GoType{parserType: ce.graph.Types[rootType(ce.endpoint.Returns)]}
+	if !goType.NeedsResolver() {
+		return ""
+	}
+
 	if strings.HasPrefix(ce.endpoint.Returns, "[]") {
 		return fmt.Sprintf("ResolveFor%s(result, c.resolver)", capitalize(strings.TrimPrefix(ce.endpoint.Returns, "[]")))
 	}
@@ -82,6 +88,16 @@ func (gt *GoType) Fields() []GoField {
 	}
 
 	return fields
+}
+
+func (gt *GoType) NeedsResolver() bool {
+	for _, field := range gt.Fields() {
+		if !builtins[field.normalizedType()] {
+			return true
+		}
+	}
+
+	return false
 }
 
 type GoField struct {
@@ -132,4 +148,8 @@ func (gf *GoField) ResolverMethodName() string {
 		gf.parentType.Name(),
 		gf.Name(),
 	)
+}
+
+func rootType(t string) string {
+	return strings.TrimPrefix(t, "[]")
 }

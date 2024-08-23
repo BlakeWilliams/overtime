@@ -29,7 +29,7 @@ type Go struct {
 func (g *Go) Endpoints() []Endpoint {
 	endpoints := make([]Endpoint, 0, len(g.graph.Endpoints))
 	for _, e := range g.graph.Endpoints {
-		endpoints = append(endpoints, Endpoint{endpoint: e})
+		endpoints = append(endpoints, Endpoint{endpoint: e, graph: g.graph})
 	}
 
 	return endpoints
@@ -179,16 +179,17 @@ func (g *Go) GenerateTypes() io.Reader {
 
 		buf.WriteString("}\n\n")
 
-		// Now that the type is defined, we need to define the resolver method
-		buf.WriteString(
-			fmt.Sprintf(
-				"func ResolveFor%s(records []*%s, resolver Resolver) (error) {\n",
-				capitalize(t.Name()),
-				capitalize(t.Name()),
-			),
-		)
+		if t.NeedsResolver() {
+			// Now that the type is defined, we need to define the resolver method
+			buf.WriteString(
+				fmt.Sprintf(
+					"func ResolveFor%s(records []*%s, resolver Resolver) (error) {\n",
+					capitalize(t.Name()),
+					capitalize(t.Name()),
+				),
+			)
 
-		buf.WriteString(fmt.Sprintf(`ids := make([]int64, len(records))
+			buf.WriteString(fmt.Sprintf(`ids := make([]int64, len(records))
 			recordsMap := make(%s, len(records))
 			for i, record := range records {
 				ids[i] = record.ID
@@ -196,12 +197,12 @@ func (g *Go) GenerateTypes() io.Reader {
 			}
 		`, t.MapType()))
 
-		for _, field := range t.Fields() {
-			if builtins[field.normalizedType()] {
-				continue
-			}
+			for _, field := range t.Fields() {
+				if builtins[field.normalizedType()] {
+					continue
+				}
 
-			buf.WriteString(fmt.Sprintf(`{
+				buf.WriteString(fmt.Sprintf(`{
 				res, err := resolver.%s(ids)
 				if err != nil {
 					return err
@@ -213,13 +214,14 @@ func (g *Go) GenerateTypes() io.Reader {
 					}
 				}
 			}`,
-				field.ResolverMethodName(),
-				field.Name(),
-			))
-			buf.WriteRune('\n')
-		}
+					field.ResolverMethodName(),
+					field.Name(),
+				))
+				buf.WriteRune('\n')
+			}
 
-		buf.WriteString("\treturn nil\n}\n\n")
+			buf.WriteString("\treturn nil\n}\n\n")
+		}
 	}
 
 	return formatCode(buf)
