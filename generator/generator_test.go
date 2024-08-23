@@ -60,7 +60,7 @@ func TestGoResolvers(t *testing.T) {
 
 	require.Contains(t, string(out), `package mytypes`)
 	require.Contains(t, string(out), "type Resolver interface")
-	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) map[int64]Comment")
+	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) map[int64]Comment error")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
