@@ -48,6 +48,7 @@ func main() {
 
 					log.Println("Generating a REST gateway from the provided schema...")
 					schemaFile := c.Args().First()
+					fmt.Println(os.Getwd())
 					if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
 						return fmt.Errorf("The schema file %s does not exist", schemaFile)
 					}
@@ -86,6 +87,9 @@ func main() {
 						return err
 					}
 					if err := writeFile(path.Join(rootPath, "endpoints.go"), gen.Endpoints()); err != nil {
+						return err
+					}
+					if err := writeFile(path.Join(rootPath, "coordinator.go"), gen.Coordinator()); err != nil {
 						return err
 					}
 

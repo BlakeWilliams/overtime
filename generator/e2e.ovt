@@ -1,0 +1,20 @@
+type Comment {
+    id: int64
+    body: string
+}
+
+type Post {
+    id: int64
+    body: string
+    comments: []Comment
+}
+
+GET "/api/v1/comments/:commentID" {
+    name: GetCommentByID
+    returns: Comment
+}
+
+GET "/api/v1/posts/:postID" {
+    name: GetPostByID
+    returns: Post
+}

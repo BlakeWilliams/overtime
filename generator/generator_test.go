@@ -1,12 +1,19 @@
 package generator
 
 import (
+	"encoding/json"
+	"fmt"
 	goparser "go/parser"
 	"go/token"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
 	"regexp"
 	"testing"
 
+	"github.com/blakewilliams/overtime/generator/overtime"
 	"github.com/blakewilliams/overtime/internal/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -123,4 +130,77 @@ func TestRoot(t *testing.T) {
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
 	require.NoError(t, err, "Generated code should parse without errors")
+}
+
+func TestCoordinator(t *testing.T) {
+	graph, err := parser.Parse(`
+		type Comment {
+			id: int64
+			body: string
+		}
+
+		type Post {
+			id: int64
+			body: string
+			comments: []Comment
+		}
+
+		GET "/api/v1/comments/:commentID" {
+			name: GetCommentByID
+			returns: Comment
+		}
+
+		GET "/api/v1/posts/:postID" {
+			name: GetPostByID
+			returns: Post
+		}`)
+
+	require.NoError(t, err)
+
+	gen := NewGo(graph)
+	gen.PackageName = "mytypes"
+
+	writer := gen.Coordinator()
+	out, err := io.ReadAll(writer)
+	require.NoError(t, err)
+
+	require.Contains(t, string(out), `package mytypes`)
+	require.Contains(t, string(out), "type Coordinator struct")
+	require.Contains(t, string(out), "GET /api/v1/comments/:commentID")
+	require.Contains(t, string(out), "result, err := c.controller.GetCommentByID(w, r)")
+	require.Contains(t, string(out), "ResolvePost(result, c.resolver)")
+
+	fset := token.NewFileSet()
+	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
+	require.NoError(t, err, "Generated code should parse without errors")
+}
+
+func Test_EndToEnd(t *testing.T) {
+	cmd := exec.Command("go", "run", "../main.go", "generate", "./e2e.ovt", "-d", "generator/test")
+	cmd.Stderr = os.Stdout
+	cmd.Stdout = os.Stdout
+	err := cmd.Run()
+	require.NoError(t, err)
+	defer func() {
+		os.RemoveAll("generator/test")
+	}()
+
+	coordinator := overtime.NewCoordinator(&overtime.RootResolver{}, &overtime.RootController{})
+	server := httptest.NewServer(coordinator)
+
+	resp, err := http.Get(server.URL + "/api/v1/posts/1")
+	require.NoError(t, err)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	fmt.Println(string(body))
+
+	// decode body
+	var post overtime.Post
+	err = json.Unmarshal(body, &post)
+	require.NoError(t, err)
+
+	require.Equal(t, int64(1), post.ID)
+	require.Len(t, post.Comments, 2)
 }

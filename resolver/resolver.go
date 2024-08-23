@@ -5,6 +5,7 @@ import (
 	"reflect"
 )
 
+// TODO: How much of this could be done as a `Resolve` method on the generated types?
 func Resolve(target any, resolver any) error {
 	t := reflect.ValueOf(target)
 
