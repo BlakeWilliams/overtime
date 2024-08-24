@@ -13,39 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGoTypes(t *testing.T) {
-	graph, err := parser.Parse(`
-		# A comment on a post
-		type Comment {
-			# The ID of the comment
-			id: int64
-			# The body of the comment
-			body: string
-		}
-			
-		type Post {
-			id: int64
-			comments: []Comment
-		}`)
-
-	require.NoError(t, err)
-
-	gen := NewGo(graph)
-	gen.PackageName = "mytypes"
-
-	writer := gen.GenerateTypes()
-	out, err := io.ReadAll(writer)
-	require.NoError(t, err)
-
-	require.Contains(t, string(out), `package mytypes`)
-	require.Regexp(t, regexp.MustCompile("ID\\s+int64\\s+`json:\"id\"`"), string(out))
-	require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]\\*Comment\\s+`json:\"comments\" resolver:\"ResolvePostComments\""), string(out))
-
-	fset := token.NewFileSet()
-	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
-	require.NoError(t, err, "Generated code should parse without errors")
-}
-
 func TestGoResolvers(t *testing.T) {
 	graph, err := parser.Parse(`
 		type Comment {
@@ -69,36 +36,6 @@ func TestGoResolvers(t *testing.T) {
 	require.Contains(t, string(out), `package mytypes`)
 	require.Contains(t, string(out), "type Resolver interface")
 	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) (map[int64][]*Comment, error)")
-
-	fset := token.NewFileSet()
-	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
-	require.NoError(t, err, "Generated code should parse without errors")
-}
-
-func TestGoGenerateControllers(t *testing.T) {
-	graph, err := parser.Parse(`
-		type Comment {
-			id: int64
-			body: string
-		}
-
-		GET "/api/v1/comments/:commentID" {
-			name: GetCommentByID
-			returns: Comment
-		}`)
-
-	require.NoError(t, err)
-
-	gen := NewGo(graph)
-	gen.PackageName = "mytypes"
-
-	writer := gen.GenerateControllers()
-	out, err := io.ReadAll(writer)
-	require.NoError(t, err)
-
-	require.Contains(t, string(out), `package mytypes`)
-	require.Contains(t, string(out), "type Controller interface")
-	require.Contains(t, string(out), "GetCommentByID(w http.ResponseWriter, r *http.Request)")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
@@ -163,6 +100,14 @@ func TestCoordinator(t *testing.T) {
 	require.Contains(t, string(out), "GET /api/v1/comments/{commentID}")
 	require.Contains(t, string(out), "result, err := c.controller.GetCommentByID(w, r)")
 	require.Contains(t, string(out), "ResolveForPost([]*Post{result}, c.resolver)")
+
+	// controller tests
+	require.Contains(t, string(out), `package mytypes`)
+	require.Contains(t, string(out), "GetCommentByID(w http.ResponseWriter, r *http.Request)")
+
+	// type tests
+	require.Regexp(t, regexp.MustCompile("ID\\s+int64\\s+`json:\"id\"`"), string(out))
+	require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]\\*Comment\\s+`json:\"comments\" resolver:\"ResolvePostComments\""), string(out))
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)

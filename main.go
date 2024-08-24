@@ -75,16 +75,10 @@ func main() {
 					}
 
 					_ = os.Mkdir(gen.PackageName, 0755)
-					if err := writeFile(path.Join(rootPath, "types.go"), gen.GenerateTypes()); err != nil {
-						return err
-					}
 					if err := writeFile(path.Join(rootPath, "resolvers.go"), gen.Resolvers()); err != nil {
 						return err
 					}
-					if err := writeFile(path.Join(rootPath, "controllers.go"), gen.GenerateControllers()); err != nil {
-						return err
-					}
-					if err := writeFile(path.Join(rootPath, "coordinator.go"), gen.Coordinator()); err != nil {
+					if err := writeFile(path.Join(rootPath, "generated.go"), gen.Coordinator()); err != nil {
 						return err
 					}
 

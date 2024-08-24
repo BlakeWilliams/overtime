@@ -124,6 +124,10 @@ func (gf *GoField) Type() string {
 	}
 }
 
+func (gf *GoField) IsBuiltin() bool {
+	return builtins[gf.normalizedType()]
+}
+
 func (gf *GoField) normalizedType() string {
 	return strings.TrimPrefix(gf.parserField.Type, "[]")
 }
