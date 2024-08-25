@@ -69,9 +69,14 @@ func main() {
 						gen.PackageName = packageName
 					}
 
-					rootPath := gen.PackageName
+					cwd, err := os.Getwd()
+					if err != nil {
+						return fmt.Errorf("Failed to get the current working directory: %w", err)
+					}
+
+					rootPath := path.Join(cwd, gen.PackageName)
 					if directory := c.String("directory"); directory != "" {
-						rootPath = path.Join(directory, gen.PackageName)
+						rootPath = path.Join(cwd, directory, gen.PackageName)
 					}
 
 					if err := writeFile(path.Join(rootPath, "generated.go"), gen.Coordinator()); err != nil {

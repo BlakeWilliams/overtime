@@ -43,6 +43,10 @@ func (ce *Endpoint) Path() string {
 	return strings.Join(formattedParts, "/")
 }
 
+func (ce *Endpoint) Comment() string {
+	return formatComment(ce.endpoint.DocComment)
+}
+
 func (ce *Endpoint) ResolverMethod() string {
 	goType := GoType{parserType: ce.graph.Types[rootType(ce.endpoint.Returns)]}
 	if !goType.NeedsResolver() {
@@ -94,6 +98,10 @@ func (gt *GoType) IDType() string {
 	return gt.parserType.Fields["id"].Type
 }
 
+func (gt *GoType) Comment() string {
+	return formatComment(gt.parserType.DocComment)
+}
+
 func (gt *GoType) NeedsResolver() bool {
 	for _, field := range gt.Fields() {
 		if !builtins[field.normalizedType()] {
@@ -138,6 +146,10 @@ func (gr *GoResolver) Arguments() string {
 	)
 }
 
+func (gr *GoResolver) Comment() string {
+	return formatComment(fmt.Sprintf(`Populates the %s field for the %s type`, gr.field.Name(), gr.goType.Name()))
+}
+
 func (gr *GoResolver) ReturnType() string {
 	if strings.HasPrefix(gr.field.Type(), "[]") {
 		return "map[int64][]" + capitalize(strings.TrimPrefix(gr.field.Type(), "[]"))
@@ -157,6 +169,10 @@ func (gf *GoField) Name() string {
 	}
 
 	return capitalize(gf.parserField.Name)
+}
+
+func (gf *GoField) Comment() string {
+	return formatComment(gf.parserField.DocComment)
 }
 
 func (gf *GoField) Type() string {

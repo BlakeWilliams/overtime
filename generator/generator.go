@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"strings"
 	"text/template"
 	"unicode"
 
@@ -135,6 +136,10 @@ func (g *Go) Coordinator() io.Reader {
 
 	type Controller interface {
 		{{ range $key, $value := .Endpoints }}
+			{{- if .Comment }}
+		 	{{- .Comment }}
+			{{ end }}
+
 			{{- .MethodName }}(w http.ResponseWriter, r *http.Request) ({{ .ReturnValue }}, error)
 		{{ end }}
 	}
@@ -146,6 +151,9 @@ func (g *Go) Coordinator() io.Reader {
 	{{ range $key, $value := .Types }}
 		type {{ .Name }} struct {
 			{{ range $field := .Fields }}
+				{{- if $field.Comment }}
+				{{- $field.Comment }}
+				{{ end }}
 				{{- $field.Name }} {{ $field.Type }} {{ $field.Tags }}
 			{{ end }}
 		}
@@ -186,6 +194,9 @@ func (g *Go) Coordinator() io.Reader {
 
 	type Resolver interface {
 		{{ range $key, $value := .Resolvers }}
+			{{- if .Comment }}
+			{{- .Comment }}
+			{{ end }}
 			{{- .MethodName }}({{ .Arguments }}) ({{ .ReturnType }}, error)
 		{{ end }}
 	}
@@ -238,4 +249,35 @@ func formatCode(b *bytes.Buffer) io.Reader {
 	}
 
 	return bytes.NewReader(formatted)
+}
+
+func formatComment(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	comment := strings.Builder{}
+	parts := strings.Split(s, " ")
+
+	width := 0
+	for _, part := range parts {
+		if width == 0 {
+			comment.WriteString("// ")
+		}
+
+		switch {
+		case width == 0:
+			comment.WriteString(part)
+		case width+len(part) > 80:
+			comment.WriteString("\n")
+			comment.WriteString("// ")
+			comment.WriteString(part)
+		default:
+			comment.WriteString(" " + part)
+		}
+
+		width += len(part)
+	}
+
+	return comment.String()
 }
