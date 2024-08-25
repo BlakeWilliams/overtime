@@ -74,10 +74,6 @@ func main() {
 						rootPath = path.Join(directory, gen.PackageName)
 					}
 
-					_ = os.Mkdir(gen.PackageName, 0755)
-					if err := writeFile(path.Join(rootPath, "resolvers.go"), gen.Resolvers()); err != nil {
-						return err
-					}
 					if err := writeFile(path.Join(rootPath, "generated.go"), gen.Coordinator()); err != nil {
 						return err
 					}

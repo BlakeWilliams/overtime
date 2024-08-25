@@ -13,35 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGoResolvers(t *testing.T) {
-	graph, err := parser.Parse(`
-		type Comment {
-			id: int64
-			body: string
-		}
-		type Post {
-			id: int64
-			comments: []Comment
-		}`)
-
-	require.NoError(t, err)
-
-	gen := NewGo(graph)
-	gen.PackageName = "mytypes"
-
-	writer := gen.Resolvers()
-	out, err := io.ReadAll(writer)
-	require.NoError(t, err)
-
-	require.Contains(t, string(out), `package mytypes`)
-	require.Contains(t, string(out), "type Resolver interface")
-	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) (map[int64][]*Comment, error)")
-
-	fset := token.NewFileSet()
-	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
-	require.NoError(t, err, "Generated code should parse without errors")
-}
-
 func TestRoot(t *testing.T) {
 	graph, err := parser.Parse(``)
 
@@ -108,6 +79,11 @@ func TestCoordinator(t *testing.T) {
 	// type tests
 	require.Regexp(t, regexp.MustCompile("ID\\s+int64\\s+`json:\"id\"`"), string(out))
 	require.Regexp(t, regexp.MustCompile("Comments\\s+\\[\\]\\*Comment\\s+`json:\"comments\" resolver:\"ResolvePostComments\""), string(out))
+
+	// resolver tests
+	require.Contains(t, string(out), `package mytypes`)
+	require.Contains(t, string(out), "type Resolver interface")
+	require.Contains(t, string(out), "ResolvePostComments(postIDs []int64) (map[int64][]*Comment, error)")
 
 	fset := token.NewFileSet()
 	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)

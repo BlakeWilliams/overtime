@@ -90,6 +90,10 @@ func (gt *GoType) Fields() []GoField {
 	return fields
 }
 
+func (gt *GoType) IDType() string {
+	return gt.parserType.Fields["id"].Type
+}
+
 func (gt *GoType) NeedsResolver() bool {
 	for _, field := range gt.Fields() {
 		if !builtins[field.normalizedType()] {
@@ -98,6 +102,48 @@ func (gt *GoType) NeedsResolver() bool {
 	}
 
 	return false
+}
+
+func (gt *GoType) Resolvers() []GoResolver {
+	resolvers := make([]GoResolver, 0)
+	for _, field := range gt.Fields() {
+		if builtins[field.normalizedType()] {
+			continue
+		}
+
+		resolvers = append(resolvers, GoResolver{goType: gt, field: &field})
+	}
+
+	return resolvers
+}
+
+type GoResolver struct {
+	goType *GoType
+	field  *GoField
+}
+
+func (gr *GoResolver) MethodName() string {
+	return fmt.Sprintf(
+		"Resolve%s%s",
+		gr.goType.Name(),
+		gr.field.Name(),
+	)
+}
+
+func (gr *GoResolver) Arguments() string {
+	return fmt.Sprintf(
+		"%sIDs []%s",
+		uncapitalize(gr.goType.Name()),
+		gr.goType.IDType(),
+	)
+}
+
+func (gr *GoResolver) ReturnType() string {
+	if strings.HasPrefix(gr.field.Type(), "[]") {
+		return "map[int64][]" + capitalize(strings.TrimPrefix(gr.field.Type(), "[]"))
+	} else {
+		return "map[int64]" + capitalize(gr.field.Type())
+	}
 }
 
 type GoField struct {
