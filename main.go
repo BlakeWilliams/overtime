@@ -9,7 +9,7 @@ import (
 	"path"
 
 	"github.com/blakewilliams/overtime/generator"
-	"github.com/blakewilliams/overtime/internal/graph"
+	"github.com/blakewilliams/overtime/internal/parser"
 	"github.com/urfave/cli/v2"
 )
 
@@ -58,11 +58,11 @@ func main() {
 						return fmt.Errorf("Failed to read the schema file %s: %w", schemaFilePath, err)
 					}
 
-					graph, err := graph.Parse(schemaFile)
+					schema, err := parser.Parse(schemaFile)
 					if err != nil {
 						return fmt.Errorf("Failed to parse the schema: %w", err)
 					}
-					gen := generator.NewGo(graph)
+					gen := generator.NewGo(schema)
 					gen.PackageName = "overtime"
 					if packageName := c.String("package name"); packageName != "" {
 						gen.PackageName = packageName

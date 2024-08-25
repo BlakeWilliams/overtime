@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/blakewilliams/overtime/internal/graph"
+	"github.com/blakewilliams/overtime/internal/parser"
 )
 
 var builtins = map[string]bool{
@@ -22,22 +22,22 @@ var builtins = map[string]bool{
 }
 
 type Go struct {
-	graph       *graph.Schema
+	parser      *parser.Schema
 	PackageName string
 }
 
 func (g *Go) Endpoints() []Endpoint {
-	endpoints := make([]Endpoint, 0, len(g.graph.Endpoints))
-	for _, e := range g.graph.Endpoints {
-		endpoints = append(endpoints, Endpoint{endpoint: e, schema: g.graph})
+	endpoints := make([]Endpoint, 0, len(g.parser.Endpoints))
+	for _, e := range g.parser.Endpoints {
+		endpoints = append(endpoints, Endpoint{endpoint: e, schema: g.parser})
 	}
 
 	return endpoints
 }
 
 func (g *Go) Types() []GoType {
-	types := make([]GoType, 0, len(g.graph.Types))
-	for _, t := range g.graph.Types {
+	types := make([]GoType, 0, len(g.parser.Types))
+	for _, t := range g.parser.Types {
 		types = append(types, GoType{parserType: t})
 	}
 
@@ -45,7 +45,7 @@ func (g *Go) Types() []GoType {
 }
 
 func (g *Go) TypesNeedingResolvers() []GoResolver {
-	resolvers := make([]GoResolver, 0, len(g.graph.Types))
+	resolvers := make([]GoResolver, 0, len(g.parser.Types))
 
 	for _, t := range g.Types() {
 		resolvers = append(resolvers, t.Resolvers()...)
@@ -54,8 +54,8 @@ func (g *Go) TypesNeedingResolvers() []GoResolver {
 	return resolvers
 }
 
-func NewGo(graph *graph.Schema) *Go {
-	return &Go{graph: graph, PackageName: "types"}
+func NewGo(graph *parser.Schema) *Go {
+	return &Go{parser: graph, PackageName: "types"}
 }
 
 func (g *Go) Root() io.Reader {

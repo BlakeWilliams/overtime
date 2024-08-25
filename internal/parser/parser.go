@@ -1,10 +1,11 @@
 // Parser takes a YAML file and returns the relevant internal representation of
 // the schema.
-package graph
+package parser
 
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -94,6 +95,8 @@ func (e *Endpoint) Validate() error {
 	return nil
 }
 
+var MethodPathRegex = regexp.MustCompile(`(\w+)\s+(.*)`)
+
 func Parse(s io.Reader) (*Schema, error) {
 	root := rawSchema{}
 	err := yaml.NewDecoder(s).Decode(&root)
@@ -122,9 +125,21 @@ func Parse(s io.Reader) (*Schema, error) {
 		schema.Types[name] = t
 	}
 
-	for path, rawEndpoint := range root.Endpoints {
+	for rawPath, rawEndpoint := range root.Endpoints {
+		matches := MethodPathRegex.FindStringSubmatch(rawPath)
+
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("Invalid path: %s, needs format `<HTTP_VERB> <PATH>`", rawPath)
+		}
+
+		fmt.Println(matches)
+
+		method := matches[1]
+		path := matches[2]
+
 		e := &Endpoint{
 			Name:    rawEndpoint.Name,
+			Method:  method,
 			Path:    path,
 			Args:    make(map[string]Field, len(rawEndpoint.Response.Body)),
 			Returns: rawEndpoint.Response.Body,

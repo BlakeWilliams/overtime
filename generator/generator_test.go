@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blakewilliams/overtime/internal/graph"
+	"github.com/blakewilliams/overtime/internal/parser"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCodeGen(t *testing.T) {
-	schema, err := graph.Parse(strings.NewReader(`
+	schema, err := parser.Parse(strings.NewReader(`
 types:
     Comment:
         fields:
@@ -52,6 +52,10 @@ endpoints:
 	require.Contains(t, string(out), "GET /api/v1/comments/{commentID}")
 	require.Contains(t, string(out), "result, err := c.controller.GetCommentByID(w, r)")
 	require.Contains(t, string(out), "ResolveForPost([]*Post{result}, c.resolver)")
+
+	// HandleFunc
+	require.Contains(t, string(out), `HandleFunc("GET /api/v1/comments/{commentID}", func(w http.ResponseWriter, r *http.Request)`)
+	require.Contains(t, string(out), "GetCommentByID(w http.ResponseWriter, r *http.Request)")
 
 	// controller tests
 	require.Contains(t, string(out), `package mytypes`)
