@@ -37,7 +37,7 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:  "directory",
-						Usage: "The directory to create the package in. Pro Tip™ use '..' + `go generate` in your impl.go file",
+						Usage: "The directory to create the package in.",
 					},
 				},
 				Usage: "Generate a REST gateway from a schema",
@@ -48,7 +48,6 @@ func main() {
 
 					log.Println("Generating a REST gateway from the provided schema...")
 					schemaFile := c.Args().First()
-					fmt.Println(os.Getwd())
 					if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
 						return fmt.Errorf("The schema file %s does not exist", schemaFile)
 					}
@@ -89,6 +88,8 @@ func main() {
 						}
 					}
 
+					fmt.Println("Done!")
+
 					return nil
 				},
 			},
@@ -96,7 +97,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		defer func() {
 			os.Exit(1)
 		}()
