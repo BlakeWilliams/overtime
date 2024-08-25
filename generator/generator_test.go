@@ -7,59 +7,40 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"testing"
 
-	"github.com/blakewilliams/overtime/internal/parser"
+	"github.com/blakewilliams/overtime/internal/graph"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRoot(t *testing.T) {
-	graph, err := parser.Parse(``)
+func TestCodeGen(t *testing.T) {
+	schema, err := graph.Parse(strings.NewReader(`
+types:
+    Comment:
+        fields:
+            id:	int64
+            body: string
+    Post:
+        fields:
+            id:	int64
+            body: string
+            comments: "[]Comment"
+endpoints:
+    "GET /api/v1/comments/:commentID":
+        name: GetCommentByID
+        response:
+            status: 200
+            body: Comment
+    "GET /api/v1/posts/:postID":
+        name: GetPostByID
+        response:
+            status: 200
+            body: Post`))
 
 	require.NoError(t, err)
 
-	gen := NewGo(graph)
-	gen.PackageName = "mytypes"
-
-	writer := gen.Root()
-	out, err := io.ReadAll(writer)
-	require.NoError(t, err)
-
-	require.Contains(t, string(out), `package mytypes`)
-	require.Contains(t, string(out), "type RootResolver")
-	require.Contains(t, string(out), "type RootController")
-
-	fset := token.NewFileSet()
-	_, err = goparser.ParseFile(fset, "", out, goparser.AllErrors)
-	require.NoError(t, err, "Generated code should parse without errors")
-}
-
-func TestCoordinator(t *testing.T) {
-	graph, err := parser.Parse(`
-		type Comment {
-			id: int64
-			body: string
-		}
-
-		type Post {
-			id: int64
-			body: string
-			comments: []Comment
-		}
-
-		GET "/api/v1/comments/:commentID" {
-			name: GetCommentByID
-			returns: Comment
-		}
-
-		GET "/api/v1/posts/:postID" {
-			name: GetPostByID
-			returns: Post
-		}`)
-
-	require.NoError(t, err)
-
-	gen := NewGo(graph)
+	gen := NewGo(schema)
 	gen.PackageName = "mytypes"
 
 	writer := gen.Coordinator()
@@ -91,7 +72,7 @@ func TestCoordinator(t *testing.T) {
 }
 
 func Test_EndToEnd(t *testing.T) {
-	cmd := exec.Command("go", "run", "../main.go", "generate", "./e2e.ovt", "-d", "generator/test")
+	cmd := exec.Command("go", "run", "../main.go", "generate", "./e2e.yaml", "-d", "generator/test")
 	cmd.Stderr = os.Stdout
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()

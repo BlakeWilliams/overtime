@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/blakewilliams/overtime/internal/parser"
+	"github.com/blakewilliams/overtime/internal/graph"
 )
 
 type Endpoint struct {
-	endpoint *parser.Endpoint
-	graph    *parser.Graph
+	endpoint *graph.Endpoint
+	schema   *graph.Schema
 }
 
 func (ce *Endpoint) Method() string {
@@ -48,7 +48,7 @@ func (ce *Endpoint) Comment() string {
 }
 
 func (ce *Endpoint) ResolverMethod() string {
-	goType := GoType{parserType: ce.graph.Types[rootType(ce.endpoint.Returns)]}
+	goType := GoType{parserType: ce.schema.Types[rootType(ce.endpoint.Returns)]}
 	if !goType.NeedsResolver() {
 		return ""
 	}
@@ -65,7 +65,7 @@ func (ce *Endpoint) ResolverMethod() string {
 }
 
 type GoType struct {
-	parserType *parser.Type
+	parserType *graph.Type
 }
 
 func (gt *GoType) Name() string {
@@ -159,7 +159,7 @@ func (gr *GoResolver) ReturnType() string {
 }
 
 type GoField struct {
-	parserField parser.Field
+	parserField graph.Field
 	parentType  *GoType
 }
 

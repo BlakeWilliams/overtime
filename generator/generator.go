@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/blakewilliams/overtime/internal/parser"
+	"github.com/blakewilliams/overtime/internal/graph"
 )
 
 var builtins = map[string]bool{
@@ -22,14 +22,14 @@ var builtins = map[string]bool{
 }
 
 type Go struct {
-	graph       *parser.Graph
+	graph       *graph.Schema
 	PackageName string
 }
 
 func (g *Go) Endpoints() []Endpoint {
 	endpoints := make([]Endpoint, 0, len(g.graph.Endpoints))
 	for _, e := range g.graph.Endpoints {
-		endpoints = append(endpoints, Endpoint{endpoint: e, graph: g.graph})
+		endpoints = append(endpoints, Endpoint{endpoint: e, schema: g.graph})
 	}
 
 	return endpoints
@@ -54,7 +54,7 @@ func (g *Go) TypesNeedingResolvers() []GoResolver {
 	return resolvers
 }
 
-func NewGo(graph *parser.Graph) *Go {
+func NewGo(graph *graph.Schema) *Go {
 	return &Go{graph: graph, PackageName: "types"}
 }
 
@@ -245,6 +245,7 @@ func capitalize(s string) string {
 func formatCode(b *bytes.Buffer) io.Reader {
 	formatted, err := format.Source(b.Bytes())
 	if err != nil {
+		fmt.Println(b.String())
 		panic(err)
 	}
 

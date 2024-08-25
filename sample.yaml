@@ -1,0 +1,15 @@
+version: 0.0.1
+
+types:
+  Comment:
+    fields:
+      id: int64
+      body: string
+  EnhancedComment:
+    extends: Comment
+
+endpoints:
+  "GET /api/comments":
+    response:
+      status: 200
+      body: Comment

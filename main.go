@@ -9,7 +9,7 @@ import (
 	"path"
 
 	"github.com/blakewilliams/overtime/generator"
-	"github.com/blakewilliams/overtime/internal/parser"
+	"github.com/blakewilliams/overtime/internal/graph"
 	"github.com/urfave/cli/v2"
 )
 
@@ -47,18 +47,18 @@ func main() {
 					}
 
 					log.Println("Generating a REST gateway from the provided schema...")
-					schemaFile := c.Args().First()
-					if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
-						return fmt.Errorf("The schema file %s does not exist", schemaFile)
+					schemaFilePath := c.Args().First()
+					if _, err := os.Stat(schemaFilePath); os.IsNotExist(err) {
+						return fmt.Errorf("The schema file %s does not exist", schemaFilePath)
 					}
 
 					// TODO use io.Reader instead of os.ReadFile
-					contents, err := os.ReadFile(schemaFile)
+					schemaFile, err := os.Open(schemaFilePath)
 					if err != nil {
-						return fmt.Errorf("Failed to read the schema file %s: %w", schemaFile, err)
+						return fmt.Errorf("Failed to read the schema file %s: %w", schemaFilePath, err)
 					}
 
-					graph, err := parser.Parse(string(contents))
+					graph, err := graph.Parse(schemaFile)
 					if err != nil {
 						return fmt.Errorf("Failed to parse the schema: %w", err)
 					}

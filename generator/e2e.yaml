@@ -1,0 +1,21 @@
+types:
+  Comment:
+    fields:
+      id: int64
+      body: string
+  Post:
+    fields:
+      id: int64
+      body: string
+      comments: "[]Comment"
+
+endpoints:
+  "GET /api/v1/comments/:commentID":
+    name: GetCommentByID
+    response:
+      body: Comment
+
+  "GET /api/v1/posts/:postID":
+    name: GetPostByID
+    response:
+      body: Post
