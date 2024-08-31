@@ -107,6 +107,8 @@ func (g *Go) Coordinator() io.Reader {
 			result, err := c.controller.{{ .MethodName }}(w, r)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				// TODO add error handler
+				return
 			}
 			{{ if .ResolverMethod }}
 				{{ .ResolverMethod }}
@@ -117,6 +119,7 @@ func (g *Go) Coordinator() io.Reader {
 			err = json.NewEncoder(w).Encode(result)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		})
 		{{ end }}
@@ -245,7 +248,6 @@ func capitalize(s string) string {
 func formatCode(b *bytes.Buffer) io.Reader {
 	formatted, err := format.Source(b.Bytes())
 	if err != nil {
-		fmt.Println(b.String())
 		panic(err)
 	}
 

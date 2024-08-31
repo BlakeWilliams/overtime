@@ -132,8 +132,6 @@ func Parse(s io.Reader) (*Schema, error) {
 			return nil, fmt.Errorf("Invalid path: %s, needs format `<HTTP_VERB> <PATH>`", rawPath)
 		}
 
-		fmt.Println(matches)
-
 		method := matches[1]
 		path := matches[2]
 
