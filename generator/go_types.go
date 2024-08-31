@@ -168,7 +168,7 @@ func (gf *GoField) Name() string {
 		return "ID"
 	}
 
-	return capitalize(gf.parserField.Name)
+	return capitalize(strings.TrimSuffix(gf.parserField.Name, "?"))
 }
 
 func (gf *GoField) Comment() string {
@@ -197,7 +197,11 @@ func (gf *GoField) normalizedType() string {
 func (gf *GoField) Tags() string {
 	tag := strings.Builder{}
 	tag.WriteString(" `")
-	tag.Write([]byte(fmt.Sprintf("json:\"%s\"", gf.parserField.Name)))
+	omitEmpty := ""
+	if gf.IsOptional() {
+		omitEmpty = ",omitempty"
+	}
+	tag.Write([]byte(fmt.Sprintf("json:\"%s%s\"", gf.parserField.Name, omitEmpty)))
 	if !builtins[gf.normalizedType()] {
 		tag.Write([]byte(fmt.Sprintf(" resolver:\"%s\"", gf.ResolverMethodName())))
 		// TODO backfill
@@ -214,6 +218,10 @@ func (gf *GoField) ResolverMethodName() string {
 		gf.parentType.Name(),
 		gf.Name(),
 	)
+}
+
+func (gf *GoField) IsOptional() bool {
+	return strings.HasSuffix(gf.parserField.Name, "?")
 }
 
 func rootType(t string) string {
